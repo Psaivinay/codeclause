@@ -1,0 +1,174 @@
+from tkinter import *
+from pygame import mixer
+import os
+from mutagen.mp3 import MP3
+import eyed3
+from tkinter.ttk import Progressbar
+
+
+# Creating interface or root window
+root = Tk()
+root.title('Music Player')
+
+# Function to play the song
+def play():
+    current_song = playlist.get(ACTIVE)
+    mixer.music.load(current_song)
+    mixer.music.play()
+
+# Function to pause the song which is currently playing
+def pause():
+    mixer.music.pause()
+
+# Function to resume the song which has paused
+def resume():
+    mixer.music.unpause()
+
+# Function to stop the currently playing song
+def stop():
+    mixer.music.stop()
+
+# Function to load and play the next song in the playlist
+def next_song():
+    current_index = playlist.curselection()[0]
+    next_index = (current_index + 1) % playlist.size()
+    playlist.selection_clear(0, END)
+    playlist.selection_set(next_index)
+    play()
+
+# Function to load and play the previous song in the playlist
+def previous_song():
+    current_index = playlist.curselection()[0]
+    prev_index = (current_index - 1) % playlist.size()
+    playlist.selection_clear(0, END)
+    playlist.selection_set(prev_index)
+    play()
+
+# Function to shuffle the playlist
+def shuffle_playlist():
+    playlist_list = playlist.get(0, END)
+    shuffled_list = random.sample(playlist_list, len(playlist_list))
+    playlist.delete(0, END)
+    for song in shuffled_list:
+        playlist.insert(END, song)
+
+# Function to update the song information label
+def update_song_info():
+    current_song = playlist.get(ACTIVE)
+    song_info_label.config(text="Now Playing: " + current_song)
+
+# Function to update the song progress bar
+def update_progress():
+    current_time = mixer.music.get_pos() // 1000
+    song_duration = int(song_length_dict.get(playlist.get(ACTIVE), 0))
+    if song_duration != 0:
+        progress = int((current_time / song_duration) * 100)
+        progressbar.config(value=progress)
+    root.after(1000, update_progress)
+
+# Function to add a song to the playlist
+def add_song():
+    song_path = filedialog.askopenfilename(filetypes=[("Audio Files", "*.mp3")])
+    song_name = os.path.basename(song_path)
+    playlist.insert(END, song_name)
+    song_length_dict[song_name] = get_song_length(song_path)
+
+# Function to remove the selected song from the playlist
+def remove_song():
+    selection = playlist.curselection()
+    if selection:
+        playlist.delete(selection)
+        song_info_label.config(text="")
+        progressbar.config(value=0)
+
+# Function to get the length (duration) of a song
+import eyed3
+
+def get_song_length(song_path):
+    audio = eyed3.load(song_path)
+    if audio is not None and audio.info is not None:
+        return audio.info.time_secs
+    return 0
+
+
+# Function to search for songs in the playlist
+def search_songs():
+    search_query = search_entry.get().lower()
+    playlist.delete(0, END)
+    for song_name in song_length_dict.keys():
+        if search_query in song_name.lower():
+            playlist.insert(END, song_name)
+
+# Initializing the mixer module
+mixer.init()
+
+# Creating a dictionary to store song lengths
+song_length_dict = {}
+
+# Creating a listbox where the list of songs are going to be displayed
+playlist = Listbox(root, selectmode=SINGLE, bg="black", fg="white", font=('arial', 15), width=30)
+playlist.grid(columnspan=4)
+
+# Creating a scrollbar for the playlist
+scrollbar = Scrollbar(root)
+scrollbar.grid(row=0, column=3, sticky=N+S)
+
+# Configuring the scrollbar to work with the playlist
+playlist.config(yscrollcommand=scrollbar.set)
+scrollbar.config(command=playlist.yview)
+
+# Specifying the path from where the list of songs need to be displayed on the root window
+os.chdir(r"C:\Users\vinay punnamaraju pc\Music")
+songs = os.listdir()
+for song in songs:
+    playlist.insert(END, song)
+    song_length_dict[song] = get_song_length(song)
+
+# Creating buttons to control the music player
+play_btn = Button(root, text="Play", command=play, bg='yellow', fg='blue')
+play_btn.grid(row=1, column=0)
+
+pause_btn = Button(root, text="Pause", command=pause, bg='yellow', fg='red')
+pause_btn.grid(row=1, column=1)
+
+resume_btn = Button(root, text="Resume", command=resume, bg='yellow', fg='green')
+resume_btn.grid(row=1, column=2)
+
+stop_btn = Button(root, text="Stop", command=stop, bg='red', fg='black')
+stop_btn.grid(row=1, column=3)
+
+previous_btn = Button(root, text="Previous", command=previous_song)
+previous_btn.grid(row=2, column=0)
+
+next_btn = Button(root, text="Next", command=next_song)
+next_btn.grid(row=2, column=1)
+
+shuffle_btn = Button(root, text="Shuffle", command=shuffle_playlist)
+shuffle_btn.grid(row=2, column=2)
+
+add_btn = Button(root, text="Add Song", command=add_song)
+add_btn.grid(row=2, column=3)
+
+remove_btn = Button(root, text="Remove Song", command=remove_song)
+remove_btn.grid(row=3, column=0)
+
+# Creating a search bar to search for songs
+search_entry = Entry(root)
+search_entry.grid(row=3, column=1)
+
+search_btn = Button(root, text="Search", command=search_songs)
+search_btn.grid(row=3, column=2)
+
+# Creating a label to display song information
+song_info_label = Label(root, text="", font=('arial', 12))
+song_info_label.grid(row=4, columnspan=4)
+
+# Creating a progress bar to display the song progress
+progressbar = Progressbar(root, orient=HORIZONTAL, length=300, mode='determinate')
+progressbar.grid(row=5, columnspan=4, pady=10)
+
+# Updating song information and progress bar
+playlist.bind('<<ListboxSelect>>', lambda event: (update_song_info(), update_progress()))
+
+# To execute the output window
+root.mainloop()
